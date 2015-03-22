@@ -1,0 +1,50 @@
+{
+  "name": "jsnetworkx-api",
+  "version": "0.0.1",
+  "description": "API page for JSNetworkX",
+  "scripts": {
+    "start": "static website/",
+    "build": "browserify src/app.jsx -t babelify | uglifyjs -mc > website/bundle.js",
+    "watch": "watchify src/app.jsx -t babelify -o website/bundle.js",
+    "gen-api": "node buildDocs"
+  },
+  "author": "Felix Kling",
+  "license": "ISC",
+  "devDependencies": {
+    "babelify": "^5.0.4",
+    "node-static": "^0.7.6",
+    "uglify-js": "^2.4.17",
+    "watchify": "^2.4.0"
+  },
+  "dependencies": {
+    "acorn-babel": "^0.11.1-38",
+    "body-parser": "^1.9.2",
+    "catharsis": "^0.8.3",
+    "docblock-parser": "^0.1.2",
+    "estraverse": "^3.1.0",
+    "express": "^4.10.2",
+    "globby": "^0.1.1",
+    "highlight.js": "^8.4.0",
+    "kramed": "^0.4.3",
+    "lodash": "^2.4.1",
+    "promise": "^6.0.1",
+    "react": "^0.12.0",
+    "react-router": "^0.10.2",
+    "recast": "^0.10",
+    "rimraf": "^2.2.8",
+    "semver": "^4.1.0",
+    "whatwg-fetch": "^0.7.0"
+  },
+  "jsnx": {
+    "files": [
+      "./jsnx/jsnx/**/*.js",
+      "!./jsnx/jsnx/**/__tests__/**/*.js"
+    ],
+    "repo": "./jsnx",
+    "versions": [
+      "es6_docs"
+    ],
+    "versionsFile": "./website/versions.json",
+    "versionsDir": "./website/versions"
+  }
+}

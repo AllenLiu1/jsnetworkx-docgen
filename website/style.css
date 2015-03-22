@@ -1,0 +1,120 @@
+body {
+  padding-top: 70px;
+}
+
+.container {
+  color: #666;
+  font-size: 16px;
+}
+
+.side-index {
+  position: fixed;
+  top: 70px;
+  bottom: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Extra small devices (phones, less than 768px) */
+/* No media query since this is the default in Bootstrap */
+
+/* Small devices (tablets, 768px and up) */
+@media (min-width: 768px) {}
+
+/* Medium devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .side-index {
+    width: 340px;
+  }
+}
+
+/* Large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .side-index {
+    width: 300px;
+  }
+}
+
+.side-index ul {
+  list-style: none;
+  padding-left: 15px;
+}
+
+.symbol-title h2,
+.symbol-title h3,
+.symbol-title h3 {
+  margin-top: 0;
+}
+
+.symbol-title h2 code,
+.symbol-title h3 code,
+.symbol-title h4 code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.symbol-title .returnType {
+  margin-top: 10px;
+}
+
+.panel-title h3,
+.panel-title h4 {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 16px;
+  color: inherit;
+}
+
+.symbol-parameters {
+  margin: 10px 0;
+  padding: 10px;
+  padding-top: 0;
+  border: 1px solid #DDD;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.symbol-description {
+  margin: 20px 0;
+}
+
+.param-type {
+  font-family: monospace;
+  font-style: italic;
+}
+
+.section {
+  margin-top: 50px;
+}
+
+.class-method {
+  position: relative;
+  margin-top: 20px;
+  margin-bottom: 40px;
+}
+
+.anchor {
+  position: absolute;
+  top: -70px;
+}
+
+.class-method .symbol-parameters {
+  border: none;
+  border-radius: 0;
+  margin-top: 0;
+}
+
+.class-method.withDescription .symbol-parameters {
+  border-bottom: 1px solid #DDD;
+  margin: 0;
+}
+
+.class-method .symbol-parameters h4 {
+  font-size: 16px;
+  margin-top: 0;
+}
+
+.class-method .symbol-description {
+  margin: 10px 0;
+}
