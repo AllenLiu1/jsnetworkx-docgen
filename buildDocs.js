@@ -1,16 +1,16 @@
 "use strict";
 var Promise = require('promise');
 
-var pkg = require('./package.json');
-var config = pkg.jsnx;
 var extractDocs = require('./extractDocs');
 var fs = require('fs');
+var globby = require('globby');
 var path = require('path');
+var pkg = require('./package.json');
 var rimraf = require('rimraf');
 var semver = require('semver');
 var spawn = require('child_process').spawn;
 
-var fullRepo = path.resolve(config.repo);
+var config = pkg.jsnx;
 var spawnArgs = {cwd: config.repo};
 
 var categories = {
@@ -66,52 +66,80 @@ function npmUpdate() {
   return promisify(spawn('npm', ['install'], spawnArgs));
 }
 
-function buildPage() {
-  console.log('buildPage');
-  return promisify(spawn('npm', ['run', 'build'], {cwd: __dirname}));
-}
-
-function updateVersion(version) {
-  /*
-  if (config.versions.indexOf(version) === -1) {
-    if (semver.valid(version)) {
-      config.versions = config.versions.filter(function(oldVersion) {
-        if ((oldVersion = semver.valid(oldVersion))) {
-          return !semver.satisfies(version, '~'+oldVersion);
-        }
-        return true;
-      });
+function updateVersion(versions) {
+  if (!Array.isArray(versions)) {
+    if (config.versions.indexOf(versions) === -1) {
+      config.versions.push(versions);
     }
-    config.versions.push(version);
+    versions = config.versions;
   }
-  */
   console.log('Update version');
-  fs.writeFileSync(config.versionsFile, JSON.stringify(config.versions, null, 2));
+  fs.writeFileSync(config.versionsFile, JSON.stringify(versions, null, 2));
 }
 
-function clearCache() {
+function clearCache(filePath) {
+  filePath = path.resolve(filePath);
   Object.keys(require.cache).forEach(function(key) {
-    if (key.substring(0, fullRepo.length) === fullRepo) {
+    if (key.substring(0, filePath.length) === filePath) {
       delete require.cache[key];
     }
   });
 }
 
 function categorize(docs) {
-  var keys = Object.keys(categories);
-  var c = keys.reduce(function(c, n) { return c[n] = {}, c; }, {});
-  for (var name in docs) {
-    keys.some(function(key) {
-      if (categories[key](docs[name])) {
-        c[key][name] = docs[name];
-        return true;
-      }
+  Object.keys(docs).forEach(function(name) {
+    var doc = docs[name];
+    var alias = doc.aliases.reduce(function(prev, name) {
+      return prev.length < name.length ? name : prev;
     });
-  }
-  return c;
+    doc.categories = alias.split('.').slice(0, -1);
+  });
+  return docs;
 }
 
-function buildDocs(versions) {
+function requireJSNetworkXFromPath(path) {
+  try {
+    return require(path);
+  } catch(err) {
+    throw new Error(
+      'Cannot load JSNetworkX. Make sure `npm install` was run in "' + path + '".\n' +
+      'Origin message:\n' + err.message
+    );
+  }
+}
+
+function getFilePaths(root) {
+  return new Promise(function(resolve, reject) {
+    var pattern = path.join(root, 'jsnx/**/*.js');
+    globby(pattern, function(err, paths) {
+      if (err) {
+        reject(err);
+      }
+      resolve(paths.filter(function(path) { return path.indexOf('__tests__') === -1; }));
+    });
+  });
+}
+
+function writeDocs(docs, version) {
+  return new Promise(function(resolve, reject) {
+    docs = categorize(docs);
+    console.log('wrote docs', version);
+    fs.writeFile(
+      path.join(config.versionsDir, version + '.json'),
+      JSON.stringify(docs),
+      function(err) {
+      if (err) {
+        reject(err);
+      }
+      else {
+        updateVersion(version);
+      }
+      resolve();
+    });
+  });
+}
+
+function buildDocsFromRepo(repo, versions) {
   if (!Array.isArray(versions)) {
     versions = [versions];
   } else {
@@ -124,40 +152,40 @@ function buildDocs(versions) {
     }
     var version = versions.pop();
     return checkout(version)
-      //.then(npmUpdate)
-      //.then(buildPage)
+      .then(npmUpdate)
       .then(function() {
-        clearCache();
-        var jsnx = require(config.repo);
-        return new Promise(function(resolve, reject) {
-          extractDocs(config.files, jsnx).then(function(docs) {
-            docs = categorize(docs);
-            console.log('built docs', version);
-            fs.writeFile(
-              path.join(config.versionsDir, version + '.json'),
-              JSON.stringify(docs),
-              function(err) {
-                if (err) {
-                  console.log(err);
-                }
-                else {
-                  updateVersion(version);
-                }
-                return build().then(resolve, reject);
-              }
-            );
-          });
-        });
+        clearCache(config.repo);
+        var jsnx = requireJSNetworkXFromPath(config.repo);
+        return getFilePaths(config.repo)
+          .then(function(paths) { return extractDocs(paths, jsnx); })
+          .then(function(docs) { return writeDocs(docs, version); })
+          .then(function() { return build(); });
       });
   }
 
-  return updateRepo().then(build);
+  return updateRepo().then(build).then(function() { updateVersion(versions); });
 }
 
-module.exports = buildDocs;
+function buildDocsFromPath(path) {
+  // Doesn't to any git magic. It simply takes the content of the directory
+  // and creates a custom version
+  var version = 'custom';
+  var jsnx = requireJSNetworkXFromPath(path);
+  return getFilePaths(path)
+    .then(function(paths) { return extractDocs(paths, jsnx); })
+    .then(function(docs) { return writeDocs(docs, version); })
+    .then(function() { updateVersion(version); });
+}
 
 if (require.main === module) {
-  buildDocs(config.versions).catch(function(error) {
+  var jsnxPath = process.argv[2];
+  var builder;
+  if (jsnxPath) {
+    builder = buildDocsFromPath(jsnxPath);
+  } else {
+    builder = buildDocsFromRepo(config.repo, config.versions);
+  }
+  builder.catch(function(error) {
     console.error(error);
   });
 }

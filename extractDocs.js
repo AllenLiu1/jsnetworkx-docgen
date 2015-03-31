@@ -5,12 +5,18 @@ var Promise = require('promise');
 
 var docblockParser = require('docblock-parser');
 var fs = require('fs');
-var globby = require('globby');
 var catharsis = require('catharsis');
 var recast = require('recast');
 var types = recast.types;
 var acorn = require('acorn-babel');
 var _ = require('lodash');
+
+docblockParser = docblockParser({
+  tags: _.assign(
+    docblockParser.defaultConfig.tags,
+    {param: docblockParser.multilineTilTag}
+  )
+});
 
 types.Type.def('ImportBatchSpecifier')
   .bases('ImportNamespaceSpecifier')
@@ -101,16 +107,44 @@ function extractPublicAPI(obj) {
   return result;
 }
 
+/**
+ * Finds the shortest number of white spaces at the beginning of non-empty lines
+ * and removes that sequence from the beginning of each line.
+ */
+function leftAlign(text) {
+  var shortest = Infinity;
+  var lines = text.split('\n');
+  lines.forEach(function(line) {
+    if (line.trim()) {
+      var match = line.match(/^ */);
+      if (match[0].length < shortest) {
+        shortest = match[0].length;
+      }
+    }
+  });
+
+  return shortest > 0 ?
+    text.replace(new RegExp('^ {0,' + shortest + '}', 'gm'), '') :
+    text;
+}
+
 function parseParamValue(value) {
-  var valuePattern = /\s*\{(.*)}(?:\s+([^\s]+)(?:\s+([^]+))?)?$/;
+  var valuePattern = /\s*\{(.*)}(?:\s+([^\s]+)([^]+)?)?$/;
   var match = value.match(valuePattern);
   if (match) {
+    var name = match[2];
     var type = catharsis.parse(match[1]);
+    var summary = '';
+    var description = match[3];
+    if (match[3]) {
+      description = leftAlign(description);
+    }
     return {
-      name: match[2],
+      name: name,
       type: type,
       typeAsHTML: catharsis.stringify(type, {htmlSafe: true, restringify: true}),
-      descr: match[3]
+      summary: summary,
+      description: description,
     };
   }
   return null;
@@ -179,6 +213,8 @@ function processFile(src, api) {
         doc.returns = docblock.tags.return ?
           parseParamValue(docblock.tags.return) :
           undefined;
+        doc.see = docblock.tags.see || [];
+        doc.aliasFor = docblock.tags.alias;
       }
       doc.async = !!node.async;
       if (doc.async) {
@@ -195,16 +231,28 @@ function processFile(src, api) {
     },
 
     visitExportDeclaration: function(path) {
+      var declaration = path.node.declaration;
       var comments = path.node.comments;
-      if (types.namedTypes.FunctionDeclaration.check(path.node.declaration)) {
+      if (types.namedTypes.Function.check(declaration)) {
         this.parseFunctionDeclaration(path.get('declaration'), comments);
-      } else if (types.namedTypes.ClassDeclaration.check(path.node.declaration)) {
+      }
+      else if (types.namedTypes.ExpressionStatement.check(declaration) &&
+        types.namedTypes.FunctionExpression.check(declaration.expression)) {
+        this.parseFunctionDeclaration(
+          path.get('declaration', 'expression'),
+          comments
+        );
+      }
+      else if (types.namedTypes.ClassDeclaration.check(path.node.declaration)) {
         this.parseClassDeclaration(path.get('declaration'), comments);
       }
       return false;
     },
 
     parseFunctionDeclaration: function(path, comments) {
+      if (!path.node.id) {
+        return;
+      }
       var functionName = path.node.id.name;
       if (functionName in api) {
         this.parseFunction(path, comments, api[functionName]);
@@ -278,32 +326,26 @@ function processFile(src, api) {
   });
 }
 
-function extractDocs(patterns, root) {
+function extractDocs(paths, root) {
   return new Promise(function(resolve, reject) {
     var api = extractPublicAPI(root);
-    globby(patterns, function(err, paths) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      var processedFiles = 0;
-      paths.forEach(function(path) {
-        fs.readFile(path, function(err, src) {
-          processedFiles += 1;
-          if (err) {
-            reject(err);
-            return;
-          }
-          try {
-            processFile(src, api);
-          } catch(error) {
-            console.error('Error while processing ' + path);
-            throw error;
-          }
-          if (processedFiles === paths.length) {
-            resolve(api);
-          }
-        });
+    var processedFiles = 0;
+    paths.forEach(function(path) {
+      fs.readFile(path, function(err, src) {
+        processedFiles += 1;
+        if (err) {
+          reject(err);
+          return;
+        }
+        try {
+          processFile(src, api);
+        } catch(error) {
+          console.error('Error while processing ' + path);
+          throw error;
+        }
+        if (processedFiles === paths.length) {
+          resolve(api);
+        }
       });
     });
   });

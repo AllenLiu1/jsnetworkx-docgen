@@ -7,13 +7,43 @@ var ActiveState = Router.ActiveState;
 
 var cx = React.addons.classSet;
 var hljs = require('highlight.js');
+var katex = require('katex');
 var kramed = require('kramed');
 var _ = require('lodash');
+
+var node = document.createElement('span');
+
+var renderer = (function() {
+  var renderer = new kramed.Renderer();
+  var inlinecode = renderer.codespan;
+  var blockcode = renderer.code;
+
+  renderer.code = function(code, lang) {
+    if (lang === 'math') {
+      node.innerHTML = code;
+      code = node.innerText;
+      return katex.renderToString(code, { displayMode: true });
+    }
+    return blockcode.call(renderer, code, lang);
+  };
+
+  renderer.codespan = function(code) {
+    if (/^\$.*\$$/.test(code)) {
+      node.innerHTML = code;
+      code = node.innerText;
+      return katex.renderToString(code.substring(1, code.length - 1));
+    }
+    return inlinecode.call(renderer, code);
+  };
+
+  return renderer;
+}());
 
 kramed.setOptions({
   highlight: function (code) {
     return hljs.highlight('javascript', code).value;
-  }
+  },
+  renderer: renderer
 });
 
 var SideIndex = React.createClass({
@@ -122,7 +152,8 @@ var Parameters = React.createClass({
           <span dangerouslySetInnerHTML={
             {__html: param.typeAsHTML}
           } className="param-type"/>
-          <p className="param-descr">{param.descr}</p>
+          <div className="param-descr">{param.summary}</div>
+          <Description className="param-descr" text={param.description} />
         </li>
     );
     return (
@@ -137,18 +168,18 @@ var Parameters = React.createClass({
 var Description = React.createClass({
   render: function() {
     var text = this.props.text;
-    try {
-      text = kramed(text);
-    }
-    catch(ex) {}
-
     if (!text) {
       return null;
     }
 
+    try {
+      text =  kramed(text);
+    } catch(ex) {}
+
+
     return (
       <div
-        className="symbol-description"
+        {...this.props}
         dangerouslySetInnerHTML={{ __html: text }}
       />
     );
@@ -196,8 +227,13 @@ var Signature = React.createClass({
           {__html: data.returns ? data.returns.typeAsHTML : 'void'}
         }
       />;
-    if (async) {
-      returnType = <code>Promise&lt;{returnType}&gt;</code>;
+    if (async && data.returns) {
+      returnType = <code
+        dangerouslySetInnerHTML={{
+          __html: 'Promise&lt;' +
+            data.returns.typeAsHTML.replace(/^Iterator/, 'Array') +
+            '&gt;'
+        }} />;
     }
 
     return (
@@ -248,7 +284,10 @@ var ClassInfo = React.createClass({
           </div>
         </div>
         <div className="panel-body">
-          <Description text={property.description} />
+          <Description
+            className="symbol-description"
+            text={property.description}
+          />
         </div>
       </div>
     );
@@ -275,7 +314,10 @@ var ClassInfo = React.createClass({
             <Parameters params={method.params} /> :
             null
           }
-          <Description text={method.description} />
+          <Description
+            className="symbol-description"
+            text={method.description}
+          />
         </div>
       </div>
     );
@@ -325,7 +367,10 @@ var ClassInfo = React.createClass({
         <div className="clearfix symbol-title">
           <h2 className="pull-left">{signature}</h2>
         </div>
-        <Description text={data.description} />
+        <Description
+          className="symbol-description"
+          text={data.description}
+        />
         <hr />
         {this._renderConstructor()}
         {this._renderProperties()}
@@ -349,7 +394,10 @@ var MethodInfo = React.createClass({
       <div style={{marginTop: 20}}>
         <Signature data={data} />
         {data.params && data.params.length > 0 ? <Parameters params={data.params} /> : null}
-        <Description text={data.description} />
+        <Description
+          className="symbol-description"
+          text={data.description}
+        />
         <Aliases aliases={data.aliases} />
       </div>
     );

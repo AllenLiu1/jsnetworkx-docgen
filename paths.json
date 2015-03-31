@@ -1,6 +1,0 @@
-{
-  "versions": "./website/versions.json",
-  "versionsDir": "./website/versions",
-  "repo": "./jsnx",
-  "files": ["./jsnx/jsnx/**/*.js", "!./jsnx/jsnx/**/__tests__/**/*.js"]
-}

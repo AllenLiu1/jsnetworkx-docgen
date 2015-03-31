@@ -65,6 +65,7 @@ var VersionIndex = React.createClass({
   },
 
   render: function() {
+    console.log(this.props.docs);
     var categories = ['Classes', 'Algorithms', 'Generators', 'Misc'];
     if (this.props.docs) {
       return (

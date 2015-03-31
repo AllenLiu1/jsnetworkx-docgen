@@ -42,14 +42,17 @@ body {
 
 .symbol-title h2,
 .symbol-title h3,
-.symbol-title h3 {
+.symbol-title h4 {
   margin-top: 0;
+}
+
+code {
+  background-color: transparent;
 }
 
 .symbol-title h2 code,
 .symbol-title h3 code,
 .symbol-title h4 code {
-  background-color: transparent;
   color: inherit;
   padding: 0;
 }
@@ -75,8 +78,30 @@ body {
   font-size: 14px;
 }
 
+.symbol-parameters > ul {
+  list-style: none;
+  margin-left: 10px;
+  padding-left: 0;
+}
+
+.symbol-parameters > ul > li {
+  margin-bottom: 10px;
+}
+
 .symbol-description {
   margin: 20px 0;
+}
+
+.param-descr p {
+  margin: 0 0 0 5px;
+}
+
+.class-method .symbol-description h3 {
+  font-size: 20px;
+}
+
+.class-method .symbol-description h4 {
+  font-size: 18px;
 }
 
 .param-type {
@@ -117,4 +142,13 @@ body {
 
 .class-method .symbol-description {
   margin: 10px 0;
+}
+
+.katex-display {
+  text-align: center;
+  display: block;
+  margin: 10px;
+}
+.katex .katex-mathml {
+  display: none;
 }
