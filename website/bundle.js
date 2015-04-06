@@ -52011,7 +52011,11 @@ var Info = React.createClass({
       if (symbolData.syncName) {
         symbolData = docs[symbolData.syncName];
       }
-      info = React.createElement(MethodInfo, { name: symbol, data: symbolData });
+      info = React.createElement(MethodInfo, {
+        params: this.props.params,
+        name: symbol,
+        data: symbolData
+      });
     }
 
     return React.createElement(
@@ -52411,17 +52415,39 @@ var MethodInfo = React.createClass({
 
   render: function render() {
     var data = this.props.data;
+    var aliases = data.aliases;
+    var aliasInfo = null;
+    if (data.aliasFor) {
+      aliasInfo = React.createElement(
+        "div",
+        { className: "aliasInfo" },
+        React.createElement(
+          "code",
+          null,
+          this.props.name
+        ),
+        " is an ",
+        React.createElement(
+          "strong",
+          null,
+          "alias"
+        ),
+        " for:"
+      );
+      data = doccache.get(this.props.params.version)[data.aliasFor];
+    }
 
     return React.createElement(
       "div",
       { style: { marginTop: 20 } },
+      aliasInfo,
       React.createElement(Signature, { data: data }),
       data.params && data.params.length > 0 ? React.createElement(Parameters, { params: data.params }) : null,
       React.createElement(Description, {
         className: "symbol-description",
         text: data.description
       }),
-      React.createElement(Aliases, { aliases: data.aliases })
+      React.createElement(Aliases, { aliases: aliases })
     );
   }
 });

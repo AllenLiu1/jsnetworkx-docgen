@@ -154,7 +154,11 @@ var Info = React.createClass({
       if (symbolData.syncName) {
         symbolData = docs[symbolData.syncName];
       }
-      info = <MethodInfo name={symbol} data={symbolData} />;
+      info = <MethodInfo
+        params={this.props.params}
+        name={symbol}
+        data={symbolData}
+      />;
     }
 
 
@@ -462,16 +466,26 @@ var MethodInfo = React.createClass({
 
   render: function() {
     var data = this.props.data;
+    var aliases = data.aliases;
+    var aliasInfo = null;
+    if (data.aliasFor) {
+      aliasInfo =
+        <div className="aliasInfo">
+          <code>{this.props.name}</code> is an <strong>alias</strong> for:
+        </div>;
+      data = doccache.get(this.props.params.version)[data.aliasFor];
+    }
 
     return (
       <div style={{marginTop: 20}}>
+        {aliasInfo}
         <Signature data={data} />
         {data.params && data.params.length > 0 ? <Parameters params={data.params} /> : null}
         <Description
           className="symbol-description"
           text={data.description}
         />
-        <Aliases aliases={data.aliases} />
+        <Aliases aliases={aliases} />
       </div>
     );
   }

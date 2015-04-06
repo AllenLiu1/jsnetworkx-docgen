@@ -67,7 +67,7 @@ code {
 
 .symbol-parameters {
   margin: 10px 0;
-);
+  padding-left: 10px;
   padding-top: 0;
   border: 1px solid #DDD;
   border-radius: 3px;
@@ -164,3 +164,11 @@ code {
   display: none;
 }
 
+.aliasInfo {
+  margin-bottom: 20px;
+  font-size: 1.2em;
+}
+
+.aliasInfo code {
+  padding: 0;
+}
