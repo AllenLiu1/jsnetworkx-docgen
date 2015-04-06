@@ -1,18 +1,20 @@
 /*jshint browser:true, maxlen:false, esnext:true*/
 "use strict";
 
-var Info = require('./Info.jsx');
+var Symbol = require('./Info.jsx');
 var Header = require('./Header.jsx');
-var React = require('react');
+var SymbolIndex = require('./SymbolIndex.jsx');
+var React = require('react/addons');
 var Router = require('react-router');
 var Redirect = Router.Redirect;
 var Route = Router.Route;
-var Redirect = Router.Redirect;
-var Routes = Router.Routes;
+var NotFoundRoute = Router.NotFoundRoute;
 var DefaultRoute = Router.DefaultRoute;
 var Link = Router.Link;
+var RouteHandler = Router.RouteHandler;
 
 require('whatwg-fetch');
+var doccache = require('./doccache');
 var semver = require('semver');
 var _ = require('lodash');
 
@@ -35,49 +37,10 @@ var App = React.createClass({
       <div >
         <Header versions={this.props.versions}/>
         <div className="container">
-          <this.props.activeRouteHandler/>
+          <RouteHandler {...this.props} />
         </div>
       </div>
     );
-  }
-});
-
-var VersionIndex = React.createClass({
-
-  _renderSection(name) {
-    var methods = Object.keys(this.props.docs[name]).sort().map(
-      m =>
-        <li>
-          <Link
-            to="symbol"
-            params={_.assign({symbol: m, category: name}, this.props.params)}>
-            {m}
-          </Link>
-        </li>
-    );
-
-    return (
-      <div>
-        <h4>{name}</h4>
-        <ul>{methods}</ul>
-      </div>
-    );
-  },
-
-  render: function() {
-    console.log(this.props.docs);
-    var categories = ['Classes', 'Algorithms', 'Generators', 'Misc'];
-    if (this.props.docs) {
-      return (
-        <div className="row">
-          {categories.map(
-            c => <div className="col-md-3">{this._renderSection(c)}</div>
-          )}
-        </div>
-      );
-    }
-    console.log('test');
-    return null;
   }
 });
 
@@ -91,7 +54,10 @@ var Version = React.createClass({
 
   _fetchVersion: function(version) {
     getVersion(version).then(
-      docs => this.setState({docs, error:false}),
+      docs => {
+        doccache.set(version, docs);
+        this.setState({docs: docs, error:false});
+      },
       _ => this.setState({error: true})
     );
   },
@@ -109,7 +75,7 @@ var Version = React.createClass({
 
   render: function() {
     if (this.state.docs && !this.state.error) {
-      return <this.props.activeRouteHandler docs={this.state.docs} />;
+      return <RouteHandler {...this.props} />;
     }
     else if (this.state.error) {
       return (
@@ -151,17 +117,23 @@ global.fetch('/versions.json')
       version = versions[0];
     }
 
-    React.render(
-      <Routes>
-        <Redirect from="/" to={"/v/"+version} />
-        <Redirect from="/v" to={"/v/"+version} />
-        <Route name="app" path="/" handler={App} versions={versions}>
-          <Route name="version" path="v/:version" handler={Version}>
-            <Route name="symbol" path=":category/:symbol" handler={Info} />
-            <DefaultRoute handler={VersionIndex} />
+    var routes = (
+      <Route name="app" path="/" handler={App}>
+        <Redirect from="/" to="version" params={{version}} />
+        <Redirect from="/v" to="version" params={{version}} />
+        <Route name="version" path="v/:version" handler={Version}>
+          <Route name="symbol" path=":symbol" handler={Symbol}>
+            <Route name="subsymbol" path=":subsymbol" handler={Symbol} />
           </Route>
+          <DefaultRoute handler={SymbolIndex} />
         </Route>
-      </Routes>,
-      document.body
+      </Route>
     );
+
+    Router.run(routes, function(Handler, state) {
+      React.render(
+        <Handler versions={versions} params={state.params} />,
+        document.body
+      );
+    });
 });

@@ -57,10 +57,6 @@ code {
   padding: 0;
 }
 
-.symbol-title .returnType {
-  margin-top: 10px;
-}
-
 .panel-title h3,
 .panel-title h4 {
   margin-top: 0;
@@ -71,7 +67,7 @@ code {
 
 .symbol-parameters {
   margin: 10px 0;
-  padding: 10px;
+);
   padding-top: 0;
   border: 1px solid #DDD;
   border-radius: 3px;
@@ -110,13 +106,28 @@ code {
 }
 
 .section {
-  margin-top: 50px;
+  margin-right: 20px;
+  margin-bottom: 20px;
+}
+
+.section h2 {
+  background-color: #888;
+  color: white;
+  padding: 10px;
+}
+
+.main-section > .section > .section {
+  display: block;
+}
+
+.section:not(.hasSubsections) {
+  display: inline-block;
+  vertical-align: top;
 }
 
 .class-method {
   position: relative;
-  margin-top: 20px;
-  margin-bottom: 40px;
+  padding-top: 55px;
 }
 
 .anchor {
@@ -130,7 +141,7 @@ code {
   margin-top: 0;
 }
 
-.class-method.withDescription .symbol-parameters {
+.class-method .withDescription .symbol-parameters {
   border-bottom: 1px solid #DDD;
   margin: 0;
 }
@@ -152,3 +163,4 @@ code {
 .katex .katex-mathml {
   display: none;
 }
+

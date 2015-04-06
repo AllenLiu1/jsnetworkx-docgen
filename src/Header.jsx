@@ -8,10 +8,12 @@ var Link = Router.Link;
 var versions = require('../versions');
 
 var VersionEntry = React.createClass({
-  mixins: [ActiveState],
+  contextTypes: {
+    router: React.PropTypes.func
+  },
 
   render: function() {
-    var isActive = this.isActive(
+    var isActive = this.context.router.isActive(
       this.props.to,
       this.props.params,
       this.props.query
@@ -19,7 +21,7 @@ var VersionEntry = React.createClass({
     var className = isActive ? 'active' : '';
     var version = this.props.params.version;
     return (
-      <li key={version} role="presentation" className={className}>
+      <li role="presentation" className={className}>
         <Link {...this.props}>{version}</Link>
       </li>
     );
@@ -51,7 +53,11 @@ var Header = React.createClass({
           <p className="navbar-text"><strong>Branches: </strong></p>
           <ul className="nav navbar-nav">
             {branches.map(
-              x => <VersionEntry to="version" params={{version: x}} />
+              x => <VersionEntry
+                key={x}
+                to="version"
+                params={{version: x}}
+              />
             )}
           </ul>
         </div>;

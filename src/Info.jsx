@@ -6,6 +6,8 @@ var Link = Router.Link;
 var ActiveState = Router.ActiveState;
 
 var cx = React.addons.classSet;
+var capitalize = require('./capitalize');
+var doccache = require('./doccache');
 var hljs = require('highlight.js');
 var katex = require('katex');
 var kramed = require('kramed');
@@ -46,8 +48,17 @@ kramed.setOptions({
   renderer: renderer
 });
 
+function getSourroundingDocs(version, doc) {
+  var docs = doccache.getCategorized(version);
+  return doc.categories.reduce((docs, category) => {
+    return docs[category];
+  }, docs);
+}
+
 var SideIndex = React.createClass({
-  mixins: [ActiveState],
+  shouldComponentUpdate: function(nextProps, nextState) {
+    return nextProps.params.symbol !== this.props.params.symbol;
+  },
 
   render: function() {
     var links = Object.keys(this.props.docs).sort().map(
@@ -57,17 +68,20 @@ var SideIndex = React.createClass({
             to="symbol"
             params={_.assign(
               {},
-              this.getActiveParams(),
+              this.props.params,
               {symbol:  k}
             )}>
             {k}
           </Link>
         </li>
     );
+    var header = this.props.name.map(
+      name => <h3 key={name}>{capitalize(name)}</h3>
+    );
     return (
       <div className="side-index">
-        <Link to="version" params={this.getActiveParams()}>&larr; Index</Link>
-        <h3>{this.props.name}</h3>
+        <Link to="version" params={this.props.params}>&lt; Index</Link>
+        {header}
         <ul>{links}</ul>
         {this.props.children}
       </div>
@@ -76,14 +90,31 @@ var SideIndex = React.createClass({
 });
 
 var ClassIndex = React.createClass({
+  shouldComponentUpdate: function(nextProps, nextState) {
+    return nextProps.params.symbol !== this.props.params.symbol;
+  },
+
   render: function() {
     var methods = this.props.cls.methods.slice();
+    if (this.props.cls.extends) {
+      var superCls =
+        doccache.get(this.props.params.version)[this.props.cls.extends];
+      methods = _.uniq(methods.concat(superCls.methods), 'name');
+    }
     var links = methods
       .sort((a,b) => a.name.localeCompare(b.name))
       .map(
         method =>
           <li key={method.name}>
-            <a href={'#'+method.name}>{method.name}</a>
+            <Link
+              to="subsymbol"
+              params={_.assign(
+                {},
+                this.props.params,
+                {subsymbol:  method.name}
+              )}>
+              {method.name}
+            </Link>
           </li>
       );
     return (
@@ -96,12 +127,11 @@ var ClassIndex = React.createClass({
 });
 
 var Info = React.createClass({
-
   render: function() {
-    var category = this.props.params.category;
-    var docs = this.props.docs;
+    var docs = doccache.get(this.props.params.version);
     var symbol = this.props.params.symbol;
-    var symbolData = docs[category][symbol];
+    var symbolData = docs[symbol];
+    var category = symbolData.categories[0];
     var info;
     var childIndex;
 
@@ -112,12 +142,17 @@ var Info = React.createClass({
         </div>;
     }
     else if(symbolData.isClass) {
-      info = <ClassInfo name={symbol} data={symbolData} />;
-      childIndex = <ClassIndex cls={symbolData} />;
+      info =
+        <ClassInfo
+          params={this.props.params}
+          name={symbol}
+          data={symbolData}
+        />;
+      childIndex = <ClassIndex params={this.props.params} cls={symbolData} />;
     }
     else {
       if (symbolData.syncName) {
-        symbolData = docs[category][symbolData.syncName];
+        symbolData = docs[symbolData.syncName];
       }
       info = <MethodInfo name={symbol} data={symbolData} />;
     }
@@ -125,8 +160,14 @@ var Info = React.createClass({
 
     return (
       <div className="row">
-        <div className="col-md-5 col-lg-4 hidden-sm">
-          <SideIndex name={category} docs={docs[category]}>
+        <div className="col-md-5 col-lg-4 hidden-sm hidden-xs">
+          <SideIndex
+            params={this.props.params}
+            name={symbolData.categories}
+            docs={getSourroundingDocs(
+              this.props.params.version,
+              symbolData
+            )}>
             {childIndex}
           </SideIndex>
         </div>
@@ -267,27 +308,51 @@ var ClassInfo = React.createClass({
     data: React.PropTypes.object
   },
 
+  componentDidMount: function() {
+    this._scrollIntoView();
+  },
+
+  componentDidUpdate: function(prevProps) {
+    if (this.props.params.subsymbol !== prevProps.params.subsymbol) {
+      this._scrollIntoView();
+    }
+  },
+
+  _scrollIntoView: function() {
+    if (this.props.params.subsymbol) {
+      setTimeout(() => {
+        if (this.isMounted()) {
+          var node = React.findDOMNode(this.refs[this.props.params.subsymbol]);
+          if (node) {
+            node.scrollIntoView();
+          }
+        }
+      }, 0);
+    }
+  },
+
   _renderProperty: function(property) {
     var classes = cx({
       panel: true,
       'panel-default': true,
-      'class-method': true,
       withDescription: !!property.description
     });
 
     return (
-      <div key={property.name} className={classes}>
-        <a className="anchor" name={property.name} id={property.name} />
-        <div className="panel-heading">
-          <div className="panel-title">
-            <Signature data={property} isproperty={true} />
+      <div key={property.name} ref={property.name} className="class-method">
+        <div className={classes}>
+          <a className="anchor" name={property.name} id={property.name} />
+          <div className="panel-heading">
+            <div className="panel-title">
+              <Signature data={property} isproperty={true} />
+            </div>
           </div>
-        </div>
-        <div className="panel-body">
-          <Description
-            className="symbol-description"
-            text={property.description}
-          />
+          <div className="panel-body">
+            <Description
+              className="symbol-description"
+              text={property.description}
+            />
+          </div>
         </div>
       </div>
     );
@@ -297,27 +362,28 @@ var ClassInfo = React.createClass({
     var classes = cx({
       panel: true,
       'panel-default': true,
-      'class-method': true,
       withDescription: !!method.description
     });
 
     return (
-      <div key={method.name} className={classes}>
-        <a className="anchor" name={method.name} id={method.name} />
-        <div className="panel-heading">
-          <div className="panel-title">
-            <Signature data={method} href={'#' + method.name}/>
+      <div key={method.name} ref={method.name} className="class-method">
+        <div className={classes}>
+          <a className="anchor" name={method.name} id={method.name} />
+          <div className="panel-heading">
+            <div className="panel-title">
+              <Signature data={method} href={'#' + method.name}/>
+            </div>
           </div>
-        </div>
-        <div className="panel-body">
-          {method.params.length > 0 ?
-            <Parameters params={method.params} /> :
-            null
-          }
-          <Description
-            className="symbol-description"
-            text={method.description}
-          />
+          <div className="panel-body">
+            {method.params.length > 0 ?
+              <Parameters params={method.params} /> :
+              null
+            }
+            <Description
+              className="symbol-description"
+              text={method.description}
+            />
+          </div>
         </div>
       </div>
     );
@@ -342,10 +408,17 @@ var ClassInfo = React.createClass({
   },
 
   _renderMethods: function() {
+    var methods = this.props.data.methods;
+    if (this.props.data.extends) {
+      var superCls =
+        doccache.get(this.props.params.version)[this.props.data.extends];
+      methods = _.uniq(methods.concat(superCls.methods), 'name');
+    }
+
     return (
       <div className="section">
         <h3>Methods</h3>
-        {this.props.data.methods.map(this._renderMethod)}
+        {methods.map(this._renderMethod)}
       </div>
     );
   },
