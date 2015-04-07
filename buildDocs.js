@@ -13,23 +13,6 @@ var spawn = require('child_process').spawn;
 var config = pkg.jsnx;
 var spawnArgs = {cwd: config.repo};
 
-var categories = {
-  'Algorithms': function(docs) {
-    return docs.aliases.some(function(a) {
-      return /^algorithms\.(\w+)/.test(a);
-    });
-  },
-  'Generators': function(docs) {
-    return docs.aliases.some(function(a) {
-      return /^generators\.(\w+)/.test(a);
-    });
-  },
-  'Classes': function(docs) {
-    return docs.isClass;
-  },
-  'Misc': function() { return true; }
-};
-
 function promisify(spawn) {
   return new Promise(function(resolve, reject) {
     var out;

@@ -127,12 +127,13 @@ code {
 
 .class-method {
   position: relative;
-  padding-top: 55px;
+  margin-bottom: 20px;
 }
 
 .anchor {
   position: absolute;
   top: -70px;
+  z-index: -1;
 }
 
 .class-method .symbol-parameters {

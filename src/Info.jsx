@@ -8,7 +8,6 @@ var ActiveState = Router.ActiveState;
 var cx = React.addons.classSet;
 var capitalize = require('./capitalize');
 var doccache = require('./doccache');
-var hljs = require('highlight.js');
 var katex = require('katex');
 var kramed = require('kramed');
 var _ = require('lodash');
@@ -43,7 +42,7 @@ var renderer = (function() {
 
 kramed.setOptions({
   highlight: function (code) {
-    return hljs.highlight('javascript', code).value;
+    return global.hljs.highlight('javascript', code).value;
   },
   renderer: renderer
 });
@@ -185,22 +184,26 @@ var Info = React.createClass({
 
 var Parameters = React.createClass({
   render: function() {
-    var params = this.props.params.map(
-      param =>
-        <li key={param.name}>
-          <span className="param-name">
-            <code>
-              {param.name}
-            </code>
-          </span>
-          {': '}
-          <span dangerouslySetInnerHTML={
-            {__html: param.typeAsHTML}
-          } className="param-type"/>
-          <div className="param-descr">{param.summary}</div>
-          <Description className="param-descr" text={param.description} />
-        </li>
-    );
+    var params = this.props.params.map(param => {
+      var type = param.typeAsHTML ?
+        <span dangerouslySetInnerHTML={
+          {__html: param.typeAsHTML}
+        } className="param-type"/> :
+        null;
+
+        return (
+          <li key={param.name}>
+            <span className="param-name">
+              <code>
+                {param.name}
+              </code>
+            </span>
+            {type ? ': ' : ''}{type}
+            <div className="param-descr">{param.summary}</div>
+            <Description className="param-descr" text={param.description} />
+          </li>
+        );
+    });
     return (
       <div className="symbol-parameters">
         <h4>Parameters</h4>
@@ -266,12 +269,17 @@ var Signature = React.createClass({
       signature = <a href={this.props.href}>{signature}</a>;
     }
 
-    var returnType =
-      <code
-        dangerouslySetInnerHTML={
-          {__html: data.returns ? data.returns.typeAsHTML : 'void'}
-        }
-      />;
+    // Return type
+    var returnType;
+    if (!data.aliasFor) {
+      returnType =
+        <code
+          dangerouslySetInnerHTML={
+            {__html: data.returns ? data.returns.typeAsHTML : 'void'}
+          }
+        />;
+    }
+
     if (async && data.returns) {
       returnType = <code
         dangerouslySetInnerHTML={{
@@ -285,7 +293,7 @@ var Signature = React.createClass({
       <div className="clearfix symbol-title">
         <h4 className="pull-left">{signature}</h4>
         <span className="returnType pull-right">
-          {isProperty ? 'Type:' : 'Returns:'} {returnType}
+          {returnType ? (isProperty ? 'Type:' : 'Returns:') : ''} {returnType}
         </span>
       </div>
     );
@@ -307,6 +315,10 @@ var Signature = React.createClass({
 });
 
 var ClassInfo = React.createClass({
+  contextTypes: {
+    router: React.PropTypes.func
+  },
+
   propTypes: {
     name: React.PropTypes.string,
     data: React.PropTypes.object
@@ -343,9 +355,14 @@ var ClassInfo = React.createClass({
     });
 
     return (
-      <div key={property.name} ref={property.name} className="class-method">
+      <div key={property.name} className="class-method">
         <div className={classes}>
-          <a className="anchor" name={property.name} id={property.name} />
+          <a
+            className="anchor"
+            name={property.name}
+            id={property.name}
+            ref={property.name}
+          />
           <div className="panel-heading">
             <div className="panel-title">
               <Signature data={property} isproperty={true} />
@@ -368,26 +385,55 @@ var ClassInfo = React.createClass({
       'panel-default': true,
       withDescription: !!method.description
     });
+    var content = null;
+    if (method.aliasFor) {
+      content =
+        <div>
+          {'Alias for '}
+          <Link
+            to="subsymbol"
+            params={_.assign(
+              {},
+              this.props.params,
+              {subsymbol:  method.aliasFor}
+            )}>
+            {method.aliasFor}
+          </Link>
+        </div>;
+    } else {
+      content =
+        <div>
+          {method.params.length > 0 ?
+            <Parameters params={method.params} /> :
+            null
+          }
+          <Description
+            className="symbol-description"
+            text={method.description}
+          />
+        </div>;
+    }
 
     return (
-      <div key={method.name} ref={method.name} className="class-method">
+      <div key={method.name} className="class-method">
         <div className={classes}>
-          <a className="anchor" name={method.name} id={method.name} />
+          <a
+            className="anchor"
+            name={method.name}
+            id={method.name}
+            ref={method.name} />
           <div className="panel-heading">
             <div className="panel-title">
-              <Signature data={method} href={'#' + method.name}/>
+              <Signature
+                data={method}
+                href={this.context.router.makeHref(
+                  'subsymbol',
+                  _.assign({}, this.props.params, {subsymbol: method.name})
+                )}
+              />
             </div>
           </div>
-          <div className="panel-body">
-            {method.params.length > 0 ?
-              <Parameters params={method.params} /> :
-              null
-            }
-            <Description
-              className="symbol-description"
-              text={method.description}
-            />
-          </div>
+          <div className="panel-body">{content}</div>
         </div>
       </div>
     );

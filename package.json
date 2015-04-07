@@ -1,33 +1,31 @@
 {
   "name": "jsnetworkx-api",
-  "version": "0.0.1",
   "description": "API page for JSNetworkX",
   "scripts": {
     "start": "static website/",
-    "build": "browserify src/app.jsx -t babelify | uglifyjs -mc > website/bundle.js",
-    "watch": "watchify src/app.jsx -t babelify -o website/bundle.js",
+    "build": "NODE_ENV=production browserify src/app.jsx -t babelify | uglifyjs -mc > website/bundle.js",
+    "watch": "watchify src/app.jsx -t babelify -o website/bundle.js -v",
     "gen-api": "node buildDocs"
   },
   "author": "Felix Kling",
-  "license": "ISC",
+  "license": "BSD",
   "devDependencies": {
-    "babelify": "^5.0.4",
+    "babelify": "^6",
+    "browserify": "^9.0.7",
     "node-static": "^0.7.6",
     "uglify-js": "^2.4.17",
-    "watchify": "^2.4.0"
+    "watchify": "^3"
   },
   "dependencies": {
     "acorn-babel": "^0.11.1-38",
     "body-parser": "^1.9.2",
     "catharsis": "^0.8.3",
     "docblock-parser": "^0.1.3",
-    "estraverse": "^3.1.0",
     "express": "^4.10.2",
-    "globby": "^0.1.1",
-    "highlight.js": "^8.4.0",
-    "katex": "fkling/KaTeX#62eefe9",
+    "globby": "^1",
+    "katex": "Khan/KaTex#v0.3.0",
     "kramed": "^0.4.3",
-    "lodash": "^2.4.1",
+    "lodash": "^3",
     "promise": "^6.0.1",
     "react": "^0.13",
     "react-router": "^0.13",
@@ -37,7 +35,7 @@
     "whatwg-fetch": "^0.7.0"
   },
   "jsnx": {
-    "repo": "jsnetworkx/",
+    "repo": "./jsnetworkx/",
     "versions": [
       "es6_docs"
     ],
