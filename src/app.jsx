@@ -25,7 +25,7 @@ function getVersion(version) {
     return Promise.resolve(versionsCache[version]);
   }
   else {
-    return global.fetch('/versions/' + version + '.json')
+    return global.fetch('versions/' + version + '.json')
       .then(response => response.json())
       .then(json => versionsCache[version] = json);
   }
@@ -90,7 +90,7 @@ var Version = React.createClass({
 });
 
 
-global.fetch('/versions.json')
+global.fetch('versions.json')
   .then(response => response.json())
   .then(versions => {
     versions.sort(function(a, b) {
