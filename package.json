@@ -37,7 +37,7 @@
   "jsnx": {
     "repo": "./jsnetworkx/",
     "versions": [
-      "es6_docs"
+      "v0.3.0"
     ],
     "versionsFile": "./website/versions.json",
     "versionsDir": "./website/versions"

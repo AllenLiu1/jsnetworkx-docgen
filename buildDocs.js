@@ -56,7 +56,7 @@ function updateVersion(versions) {
     }
     versions = config.versions;
   }
-  console.log('Update version');
+  console.log('Update version', versions);
   fs.writeFileSync(config.versionsFile, JSON.stringify(versions, null, 2));
 }
 
@@ -93,7 +93,7 @@ function requireJSNetworkXFromPath(path) {
 
 function getFilePaths(root) {
   return new Promise(function(resolve, reject) {
-    var pattern = path.join(root, 'jsnx/**/*.js');
+    var pattern = path.join(root, 'src/**/*.js');
     globby(pattern, function(err, paths) {
       if (err) {
         reject(err);
@@ -114,9 +114,6 @@ function writeDocs(docs, version) {
       if (err) {
         reject(err);
       }
-      else {
-        updateVersion(version);
-      }
       resolve();
     });
   });
@@ -125,15 +122,15 @@ function writeDocs(docs, version) {
 function buildDocsFromRepo(repo, versions) {
   if (!Array.isArray(versions)) {
     versions = [versions];
-  } else {
-    versions = versions.slice(0);
   }
 
+  var processVersions = versions.slice();
+
   function build() {
-    if (versions.length === 0) {
+    if (processVersions.length === 0) {
       return Promise.resolve(true);
     }
-    var version = versions.pop();
+    var version = processVersions.pop();
     return checkout(version)
       .then(npmUpdate)
       .then(function() {
@@ -144,6 +141,7 @@ function buildDocsFromRepo(repo, versions) {
           .then(function(docs) { return writeDocs(docs, version); })
           .then(function() { return build(); });
       });
+
   }
 
   return updateRepo().then(build).then(function() { updateVersion(versions); });
