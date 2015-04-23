@@ -8,44 +8,8 @@ var ActiveState = Router.ActiveState;
 var cx = React.addons.classSet;
 var capitalize = require('./capitalize');
 var doccache = require('./doccache');
-var katex = require('katex');
-var kramed = require('kramed');
+var kramed = require('./kramed');
 var _ = require('lodash');
-
-var node = document.createElement('span');
-
-var renderer = (function() {
-  var renderer = new kramed.Renderer();
-  var inlinecode = renderer.codespan;
-  var blockcode = renderer.code;
-
-  renderer.code = function(code, lang) {
-    if (lang === 'math') {
-      node.innerHTML = code;
-      code = node.innerText;
-      return katex.renderToString(code, { displayMode: true });
-    }
-    return blockcode.call(renderer, code, lang);
-  };
-
-  renderer.codespan = function(code) {
-    if (/^\$.*\$$/.test(code)) {
-      node.innerHTML = code;
-      code = node.innerText;
-      return katex.renderToString(code.substring(1, code.length - 1));
-    }
-    return inlinecode.call(renderer, code);
-  };
-
-  return renderer;
-}());
-
-kramed.setOptions({
-  highlight: function (code) {
-    return global.hljs.highlight('javascript', code).value;
-  },
-  renderer: renderer
-});
 
 function getSourroundingDocs(version, doc) {
   var docs = doccache.getCategorized(version);
@@ -199,15 +163,32 @@ var Parameters = React.createClass({
               </code>
             </span>
             {type ? ': ' : ''}{type}
-            <div className="param-descr">{param.summary}</div>
             <Description className="param-descr" text={param.description} />
           </li>
         );
     });
     return (
-      <div className="symbol-parameters">
+      <div>
         <h4>Parameters</h4>
         <ul>{params}</ul>
+      </div>
+    );
+  }
+});
+
+var Returns = React.createClass({
+  render: function() {
+    var data = this.props.data;
+    var type = data.typeAsHTML ?
+      <span dangerouslySetInnerHTML={
+        {__html: data.typeAsHTML}
+      } className="param-type"/> :
+      null;
+
+    return (
+      <div className="returns">
+        <h4>Returns: {type}</h4>
+        <Description className="param-descr" text={data.description} />
       </div>
     );
   }
@@ -324,21 +305,26 @@ var ClassInfo = React.createClass({
     data: React.PropTypes.object
   },
 
-  componentDidMount: function() {
-    this._scrollIntoView();
-  },
-
-  componentDidUpdate: function(prevProps) {
-    if (this.props.params.subsymbol !== prevProps.params.subsymbol) {
-      this._scrollIntoView();
+  shouldComponentUpdate: function(nextProps, nextState) {
+    if (this.props.name !== nextProps.name) {
+      return true;
     }
+
+    if (this.props.params.subsymbol !== nextProps.params.subsymbol) {
+      this._scrollIntoView(nextProps.params.subsymbol);
+    }
+    return false;
   },
 
-  _scrollIntoView: function() {
-    if (this.props.params.subsymbol) {
+  componentDidMount: function() {
+    this._scrollIntoView(this.props.params.subsymbol);
+  },
+
+  _scrollIntoView: function(subsymbol) {
+    if (subsymbol) {
       setTimeout(() => {
         if (this.isMounted()) {
-          var node = React.findDOMNode(this.refs[this.props.params.subsymbol]);
+          var node = React.findDOMNode(this.refs[subsymbol]);
           if (node) {
             node.scrollIntoView();
           }
@@ -522,11 +508,22 @@ var MethodInfo = React.createClass({
       data = doccache.get(this.props.params.version)[data.aliasFor];
     }
 
+    var hasParams = data.params && data.params.length > 0;
+    var hasReturns = data.returns && data.returns.description;
+    var info;
+    if (hasParams || hasReturns) {
+      info =
+        <div className="symbol-parameters">
+          {hasParams ? <Parameters params={data.params} /> : null}
+          {hasReturns ? <Returns data={data.returns} /> : null}
+        </div>;
+    }
+
     return (
       <div style={{marginTop: 20}}>
         {aliasInfo}
         <Signature data={data} />
-        {data.params && data.params.length > 0 ? <Parameters params={data.params} /> : null}
+        {info}
         <Description
           className="symbol-description"
           text={data.description}

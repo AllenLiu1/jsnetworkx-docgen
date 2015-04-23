@@ -42,7 +42,7 @@ var Header = React.createClass({
           <p className="navbar-text"><strong>Releases: </strong></p>
           <ul className="nav navbar-nav">
             {releases.map(
-              x => <VersionEntry to="version" params={{version: x}} />
+              x => <VersionEntry key={x} to="version" params={{version: x}} />
             )}
           </ul>
         </div>;

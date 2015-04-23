@@ -66,11 +66,13 @@ var Version = React.createClass({
     this._fetchVersion(this.props.params.version);
   },
 
-  componentWillReceiveProps: function(nextProps) {
+  shouldComponentUpdate: function(nextProps, nextState) {
     var version = nextProps.params.version;
-    if (version !== this.props.version) {
+    if (version !== this.props.params.version) {
       this._fetchVersion(version);
+      return false;
     }
+    return true;
   },
 
   render: function() {

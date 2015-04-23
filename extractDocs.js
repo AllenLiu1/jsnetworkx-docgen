@@ -8,7 +8,7 @@ var fs = require('fs');
 var catharsis = require('catharsis');
 var recast = require('recast');
 var types = recast.types;
-var acorn = require('acorn-babel');
+var babel = require('babel-core');
 var _ = require('lodash');
 
 docblockParser = docblockParser({
@@ -20,6 +20,18 @@ docblockParser = docblockParser({
 
 types.Type.def('ImportBatchSpecifier')
   .bases('ImportNamespaceSpecifier')
+  .finalize();
+
+types.Type.def('ExportNamedDeclaration')
+  .bases('ExportDeclaration')
+  .finalize();
+
+types.Type.def('ExportDefaultDeclaration')
+  .bases('ExportDeclaration')
+  .finalize();
+
+types.Type.def('ExportAllDeclaration')
+  .bases('ExportDeclaration')
   .finalize();
 
 types.Type.def('RestElement')
@@ -36,8 +48,7 @@ types.Type.def('AssignmentPattern')
 var parseWrapper = {
   parse: function(source, options) {
     var comments = [];
-    var ast = acorn.parse(source, {
-      ecmaVersion: 7,
+    var ast = babel.parse(source, {
       locations: options.loc,
       ranges: options.range,
       onComment: comments
@@ -133,8 +144,14 @@ function parseParamValue(value) {
   var match = value.match(valuePattern);
   if (match) {
     var name = match[2];
-    var type = catharsis.parse(match[1]);
-    var summary = '';
+    var type;
+    try {
+      type = catharsis.parse(match[1]);
+    } catch(error) {
+      throw new Error(
+        'Cartharsis error while parsing param "' + match[1] + '": ' + error.message
+      );
+    }
     var description = match[3];
     if (match[3]) {
       description = leftAlign(description);
@@ -143,7 +160,6 @@ function parseParamValue(value) {
       name: name,
       type: type,
       typeAsHTML: catharsis.stringify(type, {htmlSafe: true, restringify: true}),
-      summary: summary,
       description: description,
     };
   }
@@ -207,12 +223,17 @@ function processFile(src, api) {
           }
           params = params.map(parseParamValue);
           doc.params = doc.params.map(function(param, i) {
-            return _.assign(params[i], param);
+            var name = params[i].name || param.name;
+            return _.assign(params[i], param, {name: name});
           });
         }
         doc.returns = docblock.tags.return ?
           parseParamValue(docblock.tags.return) :
           undefined;
+        if (doc.returns && doc.returns.description) {
+          doc.returns.description = doc.returns.name + ' ' + doc.returns.description;
+          doc.returns.name = '';
+        }
         doc.see = docblock.tags.see || [];
         doc.aliasFor = docblock.tags.alias;
       }
